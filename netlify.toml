@@ -1,0 +1,7 @@
+[build]
+  publish = "public"
+
+[[redirects]]
+  from = "/l/:slug"
+  to = "/.netlify/functions/click?slug=:slug"
+  status = 302
