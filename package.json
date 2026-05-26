@@ -1,0 +1,19 @@
+{
+  "name": "cpa-tracker-saas",
+  "version": "1.0.0",
+  "description": "Production-ready CPA Tracking SaaS on Netlify + Supabase",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build step required'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

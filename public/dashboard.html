@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrackFlow — CPA Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════════════ */
+:root {
+  --bg:          #080b10;
+  --bg2:         #0d1117;
+  --bg3:         #131920;
+  --bg4:         #1a2230;
+  --border:      #1e2d40;
+  --border2:     #243344;
+  --text:        #e2eaf5;
+  --text2:       #8a9bb5;
+  --text3:       #4a5a72;
+  --accent:      #00d4ff;
+  --accent2:     #0088bb;
+  --green:       #00e5a0;
+  --green2:      #00a370;
+  --red:         #ff4466;
+  --red2:        #cc2244;
+  --yellow:      #ffbb00;
+  --purple:      #a855f7;
+  --card-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --radius:      10px;
+  --font-mono:   'Space Mono', monospace;
+  --font-sans:   'Syne', sans-serif;
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESET + BASE
+═══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+a { color: var(--accent); text-decoration: none; }
+input, select, textarea, button { font-family: var(--font-sans); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ═══════════════════════════════════════════════════════
+   AUTH SCREEN
+═══════════════════════════════════════════════════════ */
+#auth-screen {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+  z-index: 1000;
+}
+.auth-container {
+  width: 420px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 48px 40px;
+  box-shadow: 0 20px 80px rgba(0,212,255,0.08);
+}
+.auth-logo {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 32px;
+}
+.auth-logo-icon {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, var(--accent), var(--green));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.auth-logo-text { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+.auth-logo-text span { color: var(--accent); }
+.auth-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.auth-subtitle { color: var(--text2); font-size: 13px; margin-bottom: 28px; }
+.auth-tabs { display: flex; gap: 4px; margin-bottom: 24px; background: var(--bg3); border-radius: 8px; padding: 4px; }
+.auth-tab {
+  flex: 1; padding: 8px; text-align: center;
+  border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;
+  color: var(--text2); transition: all 0.2s;
+}
+.auth-tab.active { background: var(--bg4); color: var(--text); }
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; letter-spacing: 0.5px; text-transform: uppercase; }
+.form-input {
+  width: 100%; padding: 11px 14px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 8px; color: var(--text); font-size: 14px;
+  transition: border-color 0.2s;
+}
+.form-input:focus { outline: none; border-color: var(--accent); }
+.btn-primary {
+  width: 100%; padding: 12px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none; border-radius: 8px;
+  color: #000; font-weight: 700; font-size: 14px;
+  cursor: pointer; transition: opacity 0.2s;
+  margin-top: 8px;
+}
+.btn-primary:hover { opacity: 0.9; }
+.auth-error {
+  background: rgba(255,68,102,0.1); border: 1px solid rgba(255,68,102,0.3);
+  border-radius: 8px; padding: 10px 14px;
+  color: var(--red); font-size: 13px; margin-bottom: 16px;
+  display: none;
+}
+
+/* ═══════════════════════════════════════════════════════
+   APP LAYOUT
+═══════════════════════════════════════════════════════ */
+#app { display: none; min-height: 100vh; }
+.layout { display: flex; min-height: 100vh; }
+
+/* ─── SIDEBAR ─────────────────────────────────────────── */
+.sidebar {
+  width: 240px; flex-shrink: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  position: fixed; top: 0; left: 0; bottom: 0;
+  z-index: 100;
+}
+.sidebar-logo {
+  padding: 22px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--accent), var(--green));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.logo-text { font-size: 17px; font-weight: 800; }
+.logo-text span { color: var(--accent); }
+
+.sidebar-nav { flex: 1; padding: 16px 12px; }
+.nav-section-label {
+  font-size: 10px; font-weight: 700;
+  color: var(--text3); letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 0 8px; margin: 16px 0 8px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 8px;
+  cursor: pointer; color: var(--text2);
+  font-size: 13px; font-weight: 600;
+  transition: all 0.15s;
+  margin-bottom: 2px;
+}
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: rgba(0,212,255,0.1); color: var(--accent); }
+.nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--accent);
+  color: #000;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid var(--border);
+}
+.user-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg3);
+  border-radius: 8px;
+}
+.user-avatar {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--purple), var(--accent));
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px; color: #fff; flex-shrink: 0;
+}
+.user-email { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.user-role { font-size: 10px; color: var(--text3); }
+.logout-btn {
+  background: none; border: none;
+  color: var(--text3); cursor: pointer;
+  font-size: 16px; padding: 4px;
+  margin-left: auto;
+  transition: color 0.2s;
+}
+.logout-btn:hover { color: var(--red); }
+
+/* ─── MAIN CONTENT ──────────────────────────────────── */
+.main {
+  margin-left: 240px;
+  flex: 1;
+  display: flex; flex-direction: column;
+  min-height: 100vh;
+}
+.topbar {
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg2);
+  position: sticky; top: 0; z-index: 50;
+}
+.page-title { font-size: 18px; font-weight: 800; }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.range-selector {
+  display: flex; gap: 2px;
+  background: var(--bg3); border-radius: 8px; padding: 3px;
+}
+.range-btn {
+  padding: 5px 12px; border-radius: 6px;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer; border: none;
+  background: transparent; color: var(--text2);
+  transition: all 0.15s;
+}
+.range-btn.active { background: var(--bg4); color: var(--text); }
+.live-badge {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  background: rgba(0,229,160,0.1);
+  border: 1px solid rgba(0,229,160,0.2);
+  border-radius: 20px;
+  font-size: 11px; font-weight: 600; color: var(--green);
+}
+.live-dot {
+  width: 6px; height: 6px;
+  background: var(--green); border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.7); }
+}
+
+.content { padding: 24px 28px; flex: 1; }
+
+/* ─── PAGES ──────────────────────────────────────────── */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ═══════════════════════════════════════════════════════
+   KPI CARDS
+═══════════════════════════════════════════════════════ */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.kpi-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  position: relative; overflow: hidden;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.kpi-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.kpi-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.kpi-card.blue::before   { background: linear-gradient(90deg, var(--accent), transparent); }
+.kpi-card.green::before  { background: linear-gradient(90deg, var(--green), transparent); }
+.kpi-card.yellow::before { background: linear-gradient(90deg, var(--yellow), transparent); }
+.kpi-card.purple::before { background: linear-gradient(90deg, var(--purple), transparent); }
+.kpi-card.red::before    { background: linear-gradient(90deg, var(--red), transparent); }
+
+.kpi-label {
+  font-size: 11px; font-weight: 700;
+  color: var(--text3); letter-spacing: 1px; text-transform: uppercase;
+  margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+}
+.kpi-value {
+  font-family: var(--font-mono);
+  font-size: 28px; font-weight: 700; line-height: 1;
+  margin-bottom: 8px;
+}
+.kpi-card.blue   .kpi-value { color: var(--accent); }
+.kpi-card.green  .kpi-value { color: var(--green); }
+.kpi-card.yellow .kpi-value { color: var(--yellow); }
+.kpi-card.purple .kpi-value { color: var(--purple); }
+.kpi-card.red    .kpi-value { color: var(--red); }
+.kpi-sub { font-size: 11px; color: var(--text3); }
+
+/* ═══════════════════════════════════════════════════════
+   CHARTS
+═══════════════════════════════════════════════════════ */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-title { font-size: 13px; font-weight: 700; }
+.card-badge {
+  font-size: 11px; padding: 2px 8px;
+  border-radius: 4px; font-weight: 600;
+}
+.card-body { padding: 20px; }
+
+/* Mini bar chart */
+.mini-chart { display: flex; align-items: flex-end; gap: 4px; height: 80px; }
+.bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.bar {
+  width: 100%; border-radius: 3px 3px 0 0;
+  min-height: 2px; position: relative;
+  cursor: default;
+  transition: opacity 0.2s;
+}
+.bar:hover { opacity: 0.8; }
+.bar.clicks-bar   { background: rgba(0,212,255,0.7); }
+.bar.conv-bar     { background: rgba(0,229,160,0.7); }
+.bar-date { font-size: 9px; color: var(--text3); font-family: var(--font-mono); }
+
+/* Donut chart */
+.donut-wrap { display: flex; align-items: center; justify-content: center; gap: 24px; }
+svg.donut { overflow: visible; }
+.donut-legend { display: flex; flex-direction: column; gap: 8px; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.legend-val { margin-left: auto; font-family: var(--font-mono); font-weight: 700; padding-left: 12px; }
+
+/* ═══════════════════════════════════════════════════════
+   TABLES
+═══════════════════════════════════════════════════════ */
+.table-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 10px; font-weight: 700;
+  color: var(--text3); letter-spacing: 0.8px; text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  padding: 10px 14px;
+  font-size: 12px; color: var(--text2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg3); }
+
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
+}
+.badge-green  { background: rgba(0,229,160,0.15); color: var(--green); }
+.badge-red    { background: rgba(255,68,102,0.15); color: var(--red); }
+.badge-yellow { background: rgba(255,187,0,0.15);  color: var(--yellow); }
+.badge-blue   { background: rgba(0,212,255,0.15);  color: var(--accent); }
+.badge-purple { background: rgba(168,85,247,0.15); color: var(--purple); }
+
+/* Score bar */
+.score-bar { width: 52px; height: 6px; background: var(--bg4); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px; }
+.score-fill { height: 100%; border-radius: 3px; }
+
+/* ═══════════════════════════════════════════════════════
+   LINKS PAGE
+═══════════════════════════════════════════════════════ */
+.create-link-form {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-grid-wide { grid-column: 1 / -1; }
+.btn-sm {
+  padding: 8px 16px; border-radius: 6px;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  border: none; transition: opacity 0.2s;
+}
+.btn-accent { background: var(--accent); color: #000; }
+.btn-accent:hover { opacity: 0.85; }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-danger:hover { opacity: 0.85; }
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Copy button */
+.copy-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text3); font-size: 13px; padding: 2px 6px;
+  border-radius: 4px; transition: all 0.2s;
+}
+.copy-btn:hover { background: var(--bg4); color: var(--accent); }
+
+/* ═══════════════════════════════════════════════════════
+   SETTINGS PAGE
+═══════════════════════════════════════════════════════ */
+.settings-section {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+}
+.settings-section .card-header { padding: 16px 20px; }
+.settings-section .card-body { padding: 20px; }
+.setting-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-label { font-size: 13px; font-weight: 600; }
+.setting-desc { font-size: 11px; color: var(--text3); margin-top: 2px; }
+/* Toggle */
+.toggle { position: relative; width: 40px; height: 22px; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0;
+  background: var(--bg4); border-radius: 22px; cursor: pointer;
+  transition: 0.2s;
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute; width: 16px; height: 16px;
+  left: 3px; bottom: 3px;
+  background: var(--text2); border-radius: 50%;
+  transition: 0.2s;
+}
+.toggle input:checked + .toggle-slider { background: var(--green); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(18px); background: #fff; }
+
+/* Postback helper */
+.postback-url {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 8px; padding: 12px 14px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+  word-break: break-all;
+  cursor: pointer; transition: border-color 0.2s;
+}
+.postback-url:hover { border-color: var(--accent); }
+
+/* ═══════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════ */
+#toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--bg4); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 12px 18px;
+  font-size: 13px; font-weight: 600;
+  box-shadow: var(--card-shadow);
+  transform: translateY(80px); opacity: 0;
+  transition: all 0.3s; z-index: 9999;
+  display: flex; align-items: center; gap: 8px;
+  pointer-events: none;
+}
+#toast.show { transform: translateY(0); opacity: 1; }
+#toast.success { border-color: var(--green); color: var(--green); }
+#toast.error   { border-color: var(--red);   color: var(--red);   }
+
+/* ═══════════════════════════════════════════════════════
+   LOADING SKELETON
+═══════════════════════════════════════════════════════ */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg3) 25%, var(--bg4) 50%, var(--bg3) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 4px;
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   EMPTY STATE
+═══════════════════════════════════════════════════════ */
+.empty-state {
+  text-align: center; padding: 48px 20px;
+  color: var(--text3);
+}
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-title { font-size: 15px; font-weight: 700; color: var(--text2); margin-bottom: 6px; }
+.empty-text { font-size: 12px; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .chart-grid { grid-template-columns: 1fr; }
+  .table-grid  { grid-template-columns: 1fr; }
+  .form-grid   { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; }
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     AUTH SCREEN
+════════════════════════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-container">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">⚡</div>
+      <div class="auth-logo-text">Track<span>Flow</span></div>
+    </div>
+    <div class="auth-title">CPA Tracking Platform</div>
+    <div class="auth-subtitle">Track clicks, conversions & revenue in real-time</div>
+
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchAuthTab('login')">Sign In</div>
+      <div class="auth-tab" onclick="switchAuthTab('signup')">Sign Up</div>
+    </div>
+
+    <div id="auth-error" class="auth-error"></div>
+
+    <div id="login-form">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="login-email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" id="login-password" placeholder="••••••••">
+      </div>
+      <button class="btn-primary" onclick="doLogin()">Sign In →</button>
+    </div>
+
+    <div id="signup-form" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="signup-email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" id="signup-password" placeholder="Min 6 characters">
+      </div>
+      <button class="btn-primary" onclick="doSignup()">Create Account →</button>
+    </div>
+
+    <p style="text-align:center;margin-top:20px;font-size:11px;color:var(--text3)">
+      Powered by Supabase · Netlify Functions
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MAIN APP
+════════════════════════════════════════════════════════ -->
+<div id="app">
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">Track<span>Flow</span></div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Analytics</div>
+        <div class="nav-item active" onclick="showPage('dashboard')">
+          <span class="icon">📊</span> Dashboard
+        </div>
+        <div class="nav-item" onclick="showPage('clicks')">
+          <span class="icon">🖱</span> Clicks
+        </div>
+        <div class="nav-item" onclick="showPage('conversions')">
+          <span class="icon">🔥</span> Conversions
+        </div>
+
+        <div class="nav-section-label">Tools</div>
+        <div class="nav-item" onclick="showPage('links')">
+          <span class="icon">🔗</span> Links
+        </div>
+        <div class="nav-item" onclick="showPage('postback')">
+          <span class="icon">📡</span> Postback
+        </div>
+
+        <div class="nav-section-label">Account</div>
+        <div class="nav-item" onclick="showPage('settings')">
+          <span class="icon">⚙️</span> Settings
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-card">
+          <div class="user-avatar" id="user-avatar">U</div>
+          <div>
+            <div class="user-email" id="user-email-label">user@example.com</div>
+            <div class="user-role">Pro Tracker</div>
+          </div>
+          <button class="logout-btn" onclick="doLogout()" title="Logout">⏻</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+      <div class="topbar">
+        <div class="page-title" id="page-title">Dashboard</div>
+        <div class="topbar-right">
+          <div class="range-selector" id="range-selector" style="display:none">
+            <button class="range-btn" onclick="setRange('1d')">1D</button>
+            <button class="range-btn active" onclick="setRange('7d')">7D</button>
+            <button class="range-btn" onclick="setRange('30d')">30D</button>
+            <button class="range-btn" onclick="setRange('all')">All</button>
+          </div>
+          <div class="live-badge">
+            <div class="live-dot"></div>
+            LIVE
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+
+        <!-- ── DASHBOARD PAGE ─────────────────────────── -->
+        <div class="page active" id="page-dashboard">
+          <div class="kpi-grid">
+            <div class="kpi-card blue">
+              <div class="kpi-label">🖱 Total Clicks</div>
+              <div class="kpi-value" id="kpi-clicks">—</div>
+              <div class="kpi-sub" id="kpi-clean">— clean / — fraud</div>
+            </div>
+            <div class="kpi-card green">
+              <div class="kpi-label">🔥 Conversions</div>
+              <div class="kpi-value" id="kpi-convs">—</div>
+              <div class="kpi-sub" id="kpi-cvr">CVR: —%</div>
+            </div>
+            <div class="kpi-card yellow">
+              <div class="kpi-label">💰 Revenue</div>
+              <div class="kpi-value" id="kpi-rev">—</div>
+              <div class="kpi-sub" id="kpi-payout">Payout: —</div>
+            </div>
+            <div class="kpi-card purple">
+              <div class="kpi-label">⚡ EPC</div>
+              <div class="kpi-value" id="kpi-epc">—</div>
+              <div class="kpi-sub">Earnings Per Click</div>
+            </div>
+            <div class="kpi-card red">
+              <div class="kpi-label">🤖 Avg AI Score</div>
+              <div class="kpi-value" id="kpi-score">—</div>
+              <div class="kpi-sub">Traffic quality 0–100</div>
+            </div>
+          </div>
+
+          <div class="chart-grid">
+            <!-- Activity chart -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">📈 Activity — Clicks & Conversions</div>
+                <div style="display:flex;gap:12px;font-size:11px">
+                  <span style="color:var(--accent)">■ Clicks</span>
+                  <span style="color:var(--green)">■ Convs</span>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="mini-chart" id="daily-chart">
+                  <div class="empty-state" style="padding:8px"><div class="skeleton" style="height:60px;width:100%"></div></div>
+                </div>
+              </div>
+            </div>
+            <!-- Device donut -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">📱 Device Split</div>
+              </div>
+              <div class="card-body">
+                <div class="donut-wrap" id="device-chart">
+                  <div class="skeleton" style="width:80px;height:80px;border-radius:50%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-grid">
+            <!-- Recent clicks -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">🖱 Recent Clicks</div>
+                <div class="card-badge badge-blue" id="click-count-badge">0</div>
+              </div>
+              <div class="table-wrap">
+                <table id="clicks-table">
+                  <thead><tr>
+                    <th>Device</th><th>Country</th><th>Network</th><th>Score</th><th>Time</th>
+                  </tr></thead>
+                  <tbody id="clicks-tbody">
+                    <tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🖱</div><div class="empty-title">No clicks yet</div><div class="empty-text">Clicks will appear here in real-time</div></div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <!-- Recent conversions -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">🔥 Recent Conversions</div>
+                <div class="card-badge badge-green" id="conv-count-badge">0</div>
+              </div>
+              <div class="table-wrap">
+                <table id="convs-table">
+                  <thead><tr>
+                    <th>Offer</th><th>Payout</th><th>Status</th><th>Time</th>
+                  </tr></thead>
+                  <tbody id="convs-tbody">
+                    <tr><td colspan="4"><div class="empty-state"><div class="empty-icon">🔥</div><div class="empty-title">No conversions yet</div><div class="empty-text">Send postback to record conversions</div></div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Country breakdown -->
+          <div class="card" style="margin-bottom:24px">
+            <div class="card-header">
+              <div class="card-title">🌍 Top Countries</div>
+            </div>
+            <div class="card-body" id="country-breakdown">
+              <div class="skeleton" style="height:40px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── CLICKS PAGE ─────────────────────────────── -->
+        <div class="page" id="page-clicks">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🖱 All Clicks</div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>ClickID</th><th>Device</th><th>Country</th><th>Network</th>
+                  <th>Offer</th><th>AI Score</th><th>Fraud</th><th>IP</th><th>Time</th>
+                </tr></thead>
+                <tbody id="all-clicks-tbody">
+                  <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text3)">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── CONVERSIONS PAGE ───────────────────────── -->
+        <div class="page" id="page-conversions">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🔥 All Conversions</div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Offer</th><th>Network</th><th>Payout</th><th>Revenue</th>
+                  <th>Status</th><th>ClickID</th><th>Time</th>
+                </tr></thead>
+                <tbody id="all-convs-tbody">
+                  <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── LINKS PAGE ─────────────────────────────── -->
+        <div class="page" id="page-links">
+          <div class="create-link-form">
+            <div style="font-size:14px;font-weight:700;margin-bottom:16px">➕ Create Tracking Link</div>
+            <div class="form-grid">
+              <div class="form-group form-grid-wide">
+                <label class="form-label">Destination URL *</label>
+                <input class="form-input" id="link-dest" placeholder="https://offer.network.com/lp/123" type="url">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Network</label>
+                <input class="form-input" id="link-network" placeholder="MaxBounty, A4D, Clickbooth…">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Offer Name</label>
+                <input class="form-input" id="link-offer" placeholder="Weight Loss VSL">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Custom Slug (optional)</label>
+                <input class="form-input" id="link-slug" placeholder="my-offer">
+              </div>
+            </div>
+            <button class="btn-sm btn-accent" onclick="createLink()">Create Link</button>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">🔗 Your Tracking Links</div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Short URL</th><th>Destination</th><th>Network</th><th>Offer</th><th>Clicks</th><th>Created</th><th></th>
+                </tr></thead>
+                <tbody id="links-tbody">
+                  <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3)">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── POSTBACK PAGE ──────────────────────────── -->
+        <div class="page" id="page-postback">
+          <div class="settings-section">
+            <div class="card-header"><div class="card-title">📡 Postback URL Generator</div></div>
+            <div class="card-body">
+              <p style="color:var(--text2);font-size:13px;margin-bottom:16px">
+                Use this URL in your CPA network's postback/pixel settings. Replace macros with your network's tokens.
+              </p>
+              <div class="form-group">
+                <label class="form-label">Your Postback URL</label>
+                <div class="postback-url" id="postback-url-display" onclick="copyPostbackUrl()">
+                  Generating…
+                </div>
+                <p style="font-size:11px;color:var(--text3);margin-top:8px">Click to copy</p>
+              </div>
+
+              <div style="margin-top:24px">
+                <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text2)">Supported Macros</div>
+                <table>
+                  <thead><tr><th>Macro</th><th>Description</th><th>Example</th></tr></thead>
+                  <tbody>
+                    <tr><td><code style="color:var(--accent)">{sid}</code></td><td style="color:var(--text2)">ClickID (required)</td><td style="color:var(--text3)">CK-LR5WD3-AB12CD</td></tr>
+                    <tr><td><code style="color:var(--accent)">{payout}</code></td><td style="color:var(--text2)">Conversion payout</td><td style="color:var(--text3)">15.00</td></tr>
+                    <tr><td><code style="color:var(--accent)">{offer_name}</code></td><td style="color:var(--text2)">Offer name</td><td style="color:var(--text3)">Weight Loss VSL</td></tr>
+                    <tr><td><code style="color:var(--accent)">{offer_id}</code></td><td style="color:var(--text2)">Offer ID</td><td style="color:var(--text3)">12345</td></tr>
+                    <tr><td><code style="color:var(--accent)">{status}</code></td><td style="color:var(--text2)">1=approved, 2=rejected</td><td style="color:var(--text3)">1</td></tr>
+                    <tr><td><code style="color:var(--accent)">{ip_address}</code></td><td style="color:var(--text2)">Visitor IP</td><td style="color:var(--text3)">1.2.3.4</td></tr>
+                    <tr><td><code style="color:var(--accent)">{network}</code></td><td style="color:var(--text2)">Network name</td><td style="color:var(--text3)">MaxBounty</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div style="margin-top:24px">
+                <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text2)">Network Quick-Setup</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+                  <div class="card" style="padding:14px;cursor:pointer" onclick="showNetworkTemplate('maxbounty')">
+                    <div style="font-weight:700;margin-bottom:4px">MaxBounty</div>
+                    <div style="font-size:11px;color:var(--text3)">Click for postback template</div>
+                  </div>
+                  <div class="card" style="padding:14px;cursor:pointer" onclick="showNetworkTemplate('a4d')">
+                    <div style="font-weight:700;margin-bottom:4px">A4D / Perform[cb]</div>
+                    <div style="font-size:11px;color:var(--text3)">Click for postback template</div>
+                  </div>
+                  <div class="card" style="padding:14px;cursor:pointer" onclick="showNetworkTemplate('clickbooth')">
+                    <div style="font-weight:700;margin-bottom:4px">Clickbooth / Sovrn</div>
+                    <div style="font-size:11px;color:var(--text3)">Click for postback template</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section" id="network-template-box" style="display:none">
+            <div class="card-header"><div class="card-title" id="network-template-title">Network Template</div></div>
+            <div class="card-body">
+              <div class="postback-url" id="network-template-url" onclick="copyNetworkTemplate()"></div>
+              <p style="font-size:11px;color:var(--text3);margin-top:8px">Click to copy — paste in your network's postback settings</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SETTINGS PAGE ──────────────────────────── -->
+        <div class="page" id="page-settings">
+          <div class="settings-section">
+            <div class="card-header"><div class="card-title">🤖 Telegram Notifications</div></div>
+            <div class="card-body">
+              <p style="color:var(--text2);font-size:13px;margin-bottom:16px">
+                Get real-time alerts on clicks, conversions, and fraud.
+                <a href="https://t.me/BotFather" target="_blank">Create a bot</a> via @BotFather, then paste credentials below.
+              </p>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label">Bot Token</label>
+                  <input class="form-input" id="tg-token" placeholder="123456789:ABCdefGHIJklmNoPQRsTUVwxyz">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Chat ID</label>
+                  <input class="form-input" id="tg-chat" placeholder="-1001234567890 or @yourchannel">
+                </div>
+              </div>
+              <div class="setting-row">
+                <div><div class="setting-label">Notify on Clicks</div><div class="setting-desc">Alert for every new click event</div></div>
+                <label class="toggle"><input type="checkbox" id="tg-notify-clicks" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="setting-row">
+                <div><div class="setting-label">Notify on Conversions</div><div class="setting-desc">Alert when a conversion is recorded</div></div>
+                <label class="toggle"><input type="checkbox" id="tg-notify-convs" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="setting-row">
+                <div><div class="setting-label">Notify on Fraud</div><div class="setting-desc">Alert when fraud traffic is detected</div></div>
+                <label class="toggle"><input type="checkbox" id="tg-notify-fraud" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div style="margin-top:20px;display:flex;gap:10px">
+                <button class="btn-sm btn-accent" onclick="saveSettings()">Save Settings</button>
+                <button class="btn-sm btn-ghost" onclick="testTelegram()">Test Telegram 📲</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="card-header"><div class="card-title">🔑 Account</div></div>
+            <div class="card-body">
+              <div class="setting-row">
+                <div><div class="setting-label">Email</div><div class="setting-desc" id="settings-email">—</div></div>
+              </div>
+              <div class="setting-row">
+                <div><div class="setting-label">User ID</div><div class="setting-desc" id="settings-uid" style="font-family:var(--font-mono);font-size:11px">—</div></div>
+              </div>
+              <div style="margin-top:16px">
+                <button class="btn-sm btn-danger" onclick="doLogout()">Sign Out</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /content -->
+    </div><!-- /main -->
+  </div><!-- /layout -->
+</div><!-- /app -->
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════ -->
+<script type="module">
+// ── CONFIG — replace with your actual Supabase values ────────────────────────
+const SUPABASE_URL  = window.SUPABASE_URL  || 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON = window.SUPABASE_ANON || 'YOUR_ANON_KEY';
+const API_BASE      = '';  // empty = relative URLs (works on Netlify)
+
+// ── SUPABASE IMPORT ───────────────────────────────────────────────────────────
+const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let currentUser   = null;
+let currentRange  = '7d';
+let pollTimer     = null;
+let currentPage   = 'dashboard';
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+window.switchAuthTab = (tab) => {
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (tab==='login'?0:1)===i));
+  document.getElementById('login-form').style.display  = tab === 'login'  ? '' : 'none';
+  document.getElementById('signup-form').style.display = tab === 'signup' ? '' : 'none';
+  document.getElementById('auth-error').style.display  = 'none';
+};
+
+window.doLogin = async () => {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-password').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) showAuthError(error.message);
+};
+
+window.doSignup = async () => {
+  const email = document.getElementById('signup-email').value.trim();
+  const pass  = document.getElementById('signup-password').value;
+  const { error } = await sb.auth.signUp({ email, password: pass });
+  if (error) showAuthError(error.message);
+  else showAuthError('Check your email to confirm your account!');
+};
+
+window.doLogout = async () => {
+  clearInterval(pollTimer);
+  await sb.auth.signOut();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  currentUser = null;
+};
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+// Auth state change
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    currentUser = session.user;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    const email = currentUser.email || '';
+    document.getElementById('user-email-label').textContent = email;
+    document.getElementById('settings-email').textContent  = email;
+    document.getElementById('settings-uid').textContent    = currentUser.id;
+    document.getElementById('user-avatar').textContent     = email[0]?.toUpperCase() || 'U';
+    generatePostbackUrl();
+    await loadSettings();
+    await loadStats();
+    startPolling();
+  }
+});
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+window.showPage = (page) => {
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`page-${page}`)?.classList.add('active');
+  const titles = { dashboard:'Dashboard', clicks:'Clicks', conversions:'Conversions', links:'Links', postback:'Postback Setup', settings:'Settings' };
+  document.getElementById('page-title').textContent = titles[page] || page;
+  document.getElementById('range-selector').style.display = ['dashboard','clicks','conversions'].includes(page) ? '' : 'none';
+
+  // load page-specific data
+  if (page === 'dashboard')   loadStats();
+  if (page === 'clicks')      loadAllClicks();
+  if (page === 'conversions') loadAllConversions();
+  if (page === 'links')       loadLinks();
+
+  // mark nav item active
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.trim().toLowerCase().includes(page.slice(0,4))) n.classList.add('active');
+  });
+};
+
+window.setRange = (range) => {
+  currentRange = range;
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase() === range));
+  loadStats();
+};
+
+// ── STATS FETCH ───────────────────────────────────────────────────────────────
+async function getToken() {
+  const { data: { session } } = await sb.auth.getSession();
+  return session?.access_token || '';
+}
+
+async function apiFetch(path, opts = {}) {
+  const token = await getToken();
+  const res = await fetch(API_BASE + path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      ...opts.headers,
+    },
+  });
+  if (!res.ok) throw new Error(`API ${res.status}`);
+  return res.json();
+}
+
+async function loadStats() {
+  try {
+    const data = await apiFetch(`/api/stats?range=${currentRange}`);
+    updateKPIs(data.summary);
+    renderDailyChart(data.daily_chart || []);
+    renderDeviceChart(data.device_breakdown || {});
+    renderCountryBreakdown(data.country_breakdown || []);
+    renderRecentClicks(data.recent_clicks || []);
+    renderRecentConversions(data.recent_conversions || []);
+    document.getElementById('click-count-badge').textContent = data.summary.total_clicks;
+    document.getElementById('conv-count-badge').textContent  = data.summary.total_conversions;
+  } catch (e) {
+    console.error('Stats error:', e);
+  }
+}
+
+async function loadAllClicks() {
+  try {
+    const data = await apiFetch(`/api/stats?range=${currentRange}`);
+    const rows = data.recent_clicks || [];
+    const tb   = document.getElementById('all-clicks-tbody');
+    if (!rows.length) { tb.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🖱</div><div class="empty-title">No clicks</div></div></td></tr>`; return; }
+    tb.innerHTML = rows.map(c => `
+      <tr>
+        <td><span style="font-family:var(--font-mono);font-size:11px;color:var(--accent)">${c.clickid?.slice(0,16) || '—'}</span></td>
+        <td>${c.device || '—'}</td>
+        <td>${c.country || '—'}</td>
+        <td>${c.network || '—'}</td>
+        <td>${c.offer || '—'}</td>
+        <td>${scoreCell(c.ai_score)}</td>
+        <td>${c.fraud_flag ? '<span class="badge badge-red">FRAUD</span>' : '<span class="badge badge-green">OK</span>'}</td>
+        <td><span style="font-family:var(--font-mono);font-size:11px">${c.ip || '—'}</span></td>
+        <td>${timeAgo(c.created_at)}</td>
+      </tr>`).join('');
+  } catch {}
+}
+
+async function loadAllConversions() {
+  try {
+    const data = await apiFetch(`/api/stats?range=${currentRange}`);
+    const rows = data.recent_conversions || [];
+    const tb   = document.getElementById('all-convs-tbody');
+    if (!rows.length) { tb.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🔥</div><div class="empty-title">No conversions</div></div></td></tr>`; return; }
+    tb.innerHTML = rows.map(c => `
+      <tr>
+        <td>${c.offer_name || '—'}</td>
+        <td>${c.network || '—'}</td>
+        <td><span style="color:var(--yellow);font-family:var(--font-mono)">$${Number(c.payout||0).toFixed(2)}</span></td>
+        <td><span style="color:var(--green);font-family:var(--font-mono)">$${Number(c.revenue||0).toFixed(2)}</span></td>
+        <td>${statusBadge(c.status)}</td>
+        <td><span style="font-family:var(--font-mono);font-size:11px;color:var(--accent)">${c.clickid?.slice(0,14)||'—'}</span></td>
+        <td>${timeAgo(c.created_at)}</td>
+      </tr>`).join('');
+  } catch {}
+}
+
+// ── RENDER HELPERS ────────────────────────────────────────────────────────────
+function updateKPIs(s) {
+  if (!s) return;
+  document.getElementById('kpi-clicks').textContent = fmtNum(s.total_clicks);
+  document.getElementById('kpi-clean').textContent  = `${fmtNum(s.clean_clicks)} clean / ${fmtNum(s.fraud_clicks)} fraud`;
+  document.getElementById('kpi-convs').textContent  = fmtNum(s.total_conversions);
+  document.getElementById('kpi-cvr').textContent    = `CVR: ${s.cvr}%`;
+  document.getElementById('kpi-rev').textContent    = `$${fmtMoney(s.total_revenue)}`;
+  document.getElementById('kpi-payout').textContent = `Payout: $${fmtMoney(s.total_payout)}`;
+  document.getElementById('kpi-epc').textContent    = `$${s.epc}`;
+  document.getElementById('kpi-score').textContent  = s.avg_ai_score;
+}
+
+function renderDailyChart(data) {
+  const el = document.getElementById('daily-chart');
+  if (!data.length) { el.innerHTML = '<div class="empty-state" style="width:100%"><div class="empty-icon">📊</div><div class="empty-text">No data</div></div>'; return; }
+  const maxC = Math.max(...data.map(d => d.clicks), 1);
+  const maxV = Math.max(...data.map(d => d.conversions), 1);
+  const maxScale = Math.max(maxC, maxV * 4);
+  el.innerHTML = data.map(d => {
+    const ch = Math.max(2, Math.round((d.clicks / maxScale) * 72));
+    const cv = Math.max(0, Math.round((d.conversions / (maxScale/4)) * 72));
+    return `<div class="bar-wrap" title="${d.date}: ${d.clicks} clicks, ${d.conversions} convs">
+      <div style="display:flex;align-items:flex-end;gap:2px;height:72px">
+        <div class="bar clicks-bar" style="height:${ch}px;flex:1" title="${d.clicks} clicks"></div>
+        <div class="bar conv-bar"   style="height:${cv}px;flex:1" title="${d.conversions} convs"></div>
+      </div>
+      <div class="bar-date">${d.date.slice(5)}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderDeviceChart(devices) {
+  const el     = document.getElementById('device-chart');
+  const total  = Object.values(devices).reduce((a, b) => a + b, 0) || 1;
+  const colors = { desktop: '#00d4ff', mobile: '#00e5a0', tablet: '#a855f7', unknown: '#4a5a72' };
+  const labels = { desktop: '🖥 Desktop', mobile: '📱 Mobile', tablet: '⬜ Tablet', unknown: '❓ Other' };
+
+  if (!total) { el.innerHTML = '<div class="empty-state" style="padding:8px"><div class="empty-text">No data</div></div>'; return; }
+
+  let angle = 0;
+  const paths = [];
+  const legend = [];
+  for (const [dev, cnt] of Object.entries(devices)) {
+    const pct    = cnt / total;
+    const sweep  = pct * 2 * Math.PI;
+    const x1 = 40 + 36 * Math.cos(angle);
+    const y1 = 40 + 36 * Math.sin(angle);
+    angle += sweep;
+    const x2 = 40 + 36 * Math.cos(angle);
+    const y2 = 40 + 36 * Math.sin(angle);
+    const large = sweep > Math.PI ? 1 : 0;
+    paths.push(`<path d="M40,40 L${x1},${y1} A36,36 0 ${large},1 ${x2},${y2} Z" fill="${colors[dev]||'#4a5a72'}" opacity="0.85"/>`);
+    legend.push(`<div class="legend-item"><div class="legend-dot" style="background:${colors[dev]||'#4a5a72'}"></div>${labels[dev]||dev}<div class="legend-val">${fmtNum(cnt)}</div></div>`);
+  }
+
+  el.innerHTML = `
+    <svg class="donut" viewBox="0 0 80 80" width="100" height="100">
+      ${paths.join('')}
+      <circle cx="40" cy="40" r="18" fill="var(--bg2)"/>
+      <text x="40" y="43" text-anchor="middle" fill="var(--text)" font-size="10" font-family="var(--font-mono)">${fmtNum(total)}</text>
+    </svg>
+    <div class="donut-legend">${legend.join('')}</div>`;
+}
+
+function renderCountryBreakdown(countries) {
+  const el = document.getElementById('country-breakdown');
+  if (!countries.length) { el.innerHTML = '<div style="color:var(--text3);font-size:13px">No data yet</div>'; return; }
+  const max = countries[0].count;
+  el.innerHTML = countries.map(c => `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--accent);width:32px">${c.country}</div>
+      <div style="flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${Math.round(c.count/max*100)}%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:3px;transition:width 0.5s"></div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--text2);width:36px;text-align:right">${fmtNum(c.count)}</div>
+    </div>`).join('');
+}
+
+function renderRecentClicks(rows) {
+  const tb = document.getElementById('clicks-tbody');
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🖱</div><div class="empty-title">No clicks yet</div></div></td></tr>`; return; }
+  tb.innerHTML = rows.slice(0,10).map(c => `
+    <tr>
+      <td>${c.device || '—'}</td>
+      <td>${c.country || '—'}</td>
+      <td>${c.network || '—'}</td>
+      <td>${scoreCell(c.ai_score)}</td>
+      <td style="color:var(--text3)">${timeAgo(c.created_at)}</td>
+    </tr>`).join('');
+}
+
+function renderRecentConversions(rows) {
+  const tb = document.getElementById('convs-tbody');
+  if (!rows.length) { tb.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">🔥</div><div class="empty-title">No conversions yet</div></div></td></tr>`; return; }
+  tb.innerHTML = rows.slice(0,10).map(c => `
+    <tr>
+      <td>${c.offer_name || '—'}</td>
+      <td><span style="color:var(--yellow);font-family:var(--font-mono)">$${Number(c.payout||0).toFixed(2)}</span></td>
+      <td>${statusBadge(c.status)}</td>
+      <td style="color:var(--text3)">${timeAgo(c.created_at)}</td>
+    </tr>`).join('');
+}
+
+// ── LINKS ─────────────────────────────────────────────────────────────────────
+async function loadLinks() {
+  try {
+    const data = await apiFetch('/api/links');
+    const tb   = document.getElementById('links-tbody');
+    const links = data.links || [];
+    if (!links.length) { tb.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🔗</div><div class="empty-title">No links yet</div><div class="empty-text">Create your first tracking link above</div></div></td></tr>`; return; }
+    const base = window.location.origin;
+    tb.innerHTML = links.map(l => `
+      <tr>
+        <td>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--accent)">${base}/l/${l.slug}</span>
+          <button class="copy-btn" onclick="copyText('${base}/l/${l.slug}')" title="Copy">📋</button>
+        </td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis"><span title="${l.destination_url}">${l.destination_url.slice(0,40)}…</span></td>
+        <td>${l.network || '—'}</td>
+        <td>${l.offer_name || '—'}</td>
+        <td><span class="badge badge-blue">${fmtNum(l.clicks||0)}</span></td>
+        <td style="color:var(--text3)">${fmtDate(l.created_at)}</td>
+        <td><button class="btn-sm btn-danger" onclick="deleteLink('${l.id}')">✕</button></td>
+      </tr>`).join('');
+  } catch (e) { console.error(e); }
+}
+
+window.createLink = async () => {
+  const dest    = document.getElementById('link-dest').value.trim();
+  const network = document.getElementById('link-network').value.trim();
+  const offer   = document.getElementById('link-offer').value.trim();
+  const slug    = document.getElementById('link-slug').value.trim();
+  if (!dest) { showToast('Destination URL is required', 'error'); return; }
+  try {
+    await apiFetch('/api/links', { method: 'POST', body: JSON.stringify({ destination_url: dest, network, offer_name: offer, custom_slug: slug }) });
+    showToast('Link created! 🔗');
+    ['link-dest','link-network','link-offer','link-slug'].forEach(id => document.getElementById(id).value = '');
+    loadLinks();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+};
+
+window.deleteLink = async (id) => {
+  if (!confirm('Delete this link?')) return;
+  try {
+    await apiFetch(`/api/links?id=${id}`, { method: 'DELETE' });
+    showToast('Link deleted');
+    loadLinks();
+  } catch (e) { showToast('Error', 'error'); }
+};
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+async function loadSettings() {
+  try {
+    const data = await apiFetch('/api/settings');
+    const s    = data.settings || {};
+    if (s.telegram_bot_token) document.getElementById('tg-token').value = s.telegram_bot_token;
+    if (s.telegram_chat_id)   document.getElementById('tg-chat').value  = s.telegram_chat_id;
+    document.getElementById('tg-notify-clicks').checked = s.notify_clicks !== false;
+    document.getElementById('tg-notify-convs').checked  = s.notify_conversions !== false;
+    document.getElementById('tg-notify-fraud').checked  = s.notify_fraud !== false;
+  } catch {}
+}
+
+window.saveSettings = async () => {
+  const body = {
+    telegram_bot_token:   document.getElementById('tg-token').value.trim(),
+    telegram_chat_id:     document.getElementById('tg-chat').value.trim(),
+    notify_clicks:        document.getElementById('tg-notify-clicks').checked,
+    notify_conversions:   document.getElementById('tg-notify-convs').checked,
+    notify_fraud:         document.getElementById('tg-notify-fraud').checked,
+  };
+  try {
+    await apiFetch('/api/settings', { method: 'POST', body: JSON.stringify(body) });
+    showToast('Settings saved ✓');
+  } catch { showToast('Error saving settings', 'error'); }
+};
+
+window.testTelegram = async () => {
+  await saveSettings();
+  showToast('Settings saved — check Telegram for test message');
+};
+
+// ── POSTBACK URL ──────────────────────────────────────────────────────────────
+function generatePostbackUrl() {
+  const base = window.location.origin;
+  const url  = `${base}/api/postback?sid={sid}&payout={payout}&offer_name={offer_name}&status={status}&network={network}&ip_address={ip_address}`;
+  document.getElementById('postback-url-display').textContent = url;
+}
+
+window.copyPostbackUrl = () => {
+  const txt = document.getElementById('postback-url-display').textContent;
+  copyText(txt);
+};
+
+window.showNetworkTemplate = (network) => {
+  const base = window.location.origin;
+  const templates = {
+    maxbounty:  `${base}/api/postback?sid={s1}&payout={commission_amount}&offer_name={offer_name}&offer_id={offer_id}&status=1&network=MaxBounty`,
+    a4d:        `${base}/api/postback?sid={sid}&payout={payout}&offer_name={offer_name}&status={status}&network=A4D`,
+    clickbooth: `${base}/api/postback?sid={aff_sub}&payout={sale_amount}&offer_name={offer_name}&status=1&network=Clickbooth`,
+  };
+  document.getElementById('network-template-box').style.display   = '';
+  document.getElementById('network-template-title').textContent   = { maxbounty:'MaxBounty Template', a4d:'A4D / Perform[cb] Template', clickbooth:'Clickbooth Template' }[network];
+  document.getElementById('network-template-url').textContent     = templates[network];
+};
+
+window.copyNetworkTemplate = () => {
+  copyText(document.getElementById('network-template-url').textContent);
+};
+
+// ── POLLING ───────────────────────────────────────────────────────────────────
+function startPolling() {
+  pollTimer = setInterval(() => {
+    if (currentPage === 'dashboard') loadStats();
+  }, 5000);
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function fmtNum(n)   { return (n || 0).toLocaleString(); }
+function fmtMoney(n) { return Number(n || 0).toFixed(2); }
+function fmtDate(d)  { return d ? new Date(d).toLocaleDateString() : '—'; }
+function timeAgo(d) {
+  if (!d) return '—';
+  const diff = Date.now() - new Date(d).getTime();
+  const s = Math.floor(diff / 1000);
+  if (s < 60)   return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  return `${Math.floor(s/86400)}d ago`;
+}
+function scoreCell(score) {
+  const s = score || 0;
+  const color = s >= 70 ? '#00e5a0' : s >= 40 ? '#ffbb00' : '#ff4466';
+  return `<div style="display:inline-flex;align-items:center;gap:6px">
+    <div class="score-bar"><div class="score-fill" style="width:${s}%;background:${color}"></div></div>
+    <span style="color:${color};font-family:var(--font-mono);font-size:11px">${s}</span>
+  </div>`;
+}
+function statusBadge(s) {
+  const map = { approved: 'badge-green', rejected: 'badge-red', pending: 'badge-yellow' };
+  return `<span class="badge ${map[s]||'badge-blue'}">${(s||'').toUpperCase()}</span>`;
+}
+window.copyText = (text) => {
+  navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard! 📋'));
+};
+
+let toastTimer;
+window.showToast = (msg, type = 'success') => {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+};
+
+// Expose globals needed by inline HTML handlers
+window.setRange     = window.setRange;
+window.showPage     = window.showPage;
+window.doLogin      = window.doLogin;
+window.doSignup     = window.doSignup;
+window.doLogout     = window.doLogout;
+window.switchAuthTab= window.switchAuthTab;
+window.saveSettings = window.saveSettings;
+window.testTelegram = window.testTelegram;
+window.createLink   = window.createLink;
+window.deleteLink   = window.deleteLink;
+window.copyPostbackUrl   = window.copyPostbackUrl;
+window.copyNetworkTemplate = window.copyNetworkTemplate;
+window.showNetworkTemplate = window.showNetworkTemplate;
+</script>
+</body>
+</html>
